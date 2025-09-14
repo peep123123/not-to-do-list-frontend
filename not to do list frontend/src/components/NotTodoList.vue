@@ -10,7 +10,10 @@
             <button @click="addNotTodo">추가</button>
         </div>
 
-        <!-- 하지 말아야할 목록 전체보기 -->
+        <!-- 안 할 일 개수 표시 -->
+        <p class="notTodo-count">남은 안 할 일 : {{ notTodos.length }}개</p>
+
+        <!-- 안 할 일 목록 전체보기 -->
         <!-- v-if: Vue의 조건부 렌더링 지시어, 특정 조건이 true일 때만 해당 요소 화면 표시
              v-else: v-if가 false 일때 실행 --> 
         <div v-if="notTodos.length === 0" class="loading-message">
@@ -200,4 +203,14 @@
         font-style: italic;
         margin-top: 50px;
     }
+
+    /* 안 할 일 개수 표시 스타일 */
+    .notTodo-count {
+        text-align: right;
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+
 </style>
