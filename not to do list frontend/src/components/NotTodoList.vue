@@ -113,6 +113,7 @@
     onMounted(async () => {
         fetchTodos();
     });
+
 </script>
 <!-- scoped: 해당컴포넌트 내부의 스타일만 적용 -->
 <style scoped>
@@ -122,26 +123,27 @@
         margin: 40px auto;
         padding: 20px;
         background: #f9f9f9;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
+        border-radius: 23px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);  /* 요소 주변에 그림자 추가 (가로 오프셋, 세로 오프셋, 흐림, 색상 */
+    }                                                /* rgba: rgb 색상+불투명도 */
 
     /* 입력창과 추가 버튼을 감싸는 컨테이너 */
     .input-container {
         display: flex;
-        gap: 10px;
+        gap: 10px;      /* 아이템들 사이에 10px의 간격을 둠 */
         margin-bottom: 20px;
     }
 
-    /* 할 일 입력창 스타일 */
+    /* 안할 일 입력창 스타일 */
     .input-container input[type="text"] {
-        flex-grow: 1;
+        flex-grow: 1;       /* flex 요소의 자식들이 남는 공간을 어떤 비율로 차지할지 설정, 기본값 0  
+                                input과 button의 비율은 1:0 */
         padding: 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
     }
 
-    /* 할 일 입력창 스타일 */
+    /* 안할 일 추가 버튼 스타일 */
     .input-container button, 
     li button {
         padding: 10px 15px;
@@ -166,7 +168,8 @@
         margin-bottom: 10px;
         background: white;
         border-radius: 4px;
-        transition: all 0.3s ease;
+        transition: all 0.3s ease;      /* 상태변화 애니메이션 효과
+                                            all: 모든 속성, 0.3s: 애니메이션 걸리는 시간, ease: 시작과 끝은 느리고 중간은 빠름 */
     }
     
     li:hover {
