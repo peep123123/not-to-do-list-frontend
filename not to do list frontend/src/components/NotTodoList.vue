@@ -10,6 +10,13 @@
             <button @click="addNotTodo">추가</button>
         </div>
 
+        <!-- 완료 상태에 따른 필터링 -->
+        <div class="filters">
+            <button @click="filter = 'all'">전체</button>
+            <button @click="filter = 'completed'">완료</button>
+            <button @click="filter = 'active'">미완료</button>
+        </div>
+
         <!-- 안 할 일 개수 표시 -->
         <p class="notTodo-count">남은 안 할 일 : {{ notTodos.length }}개</p>
 
@@ -23,7 +30,7 @@
             <!-- v-for: Vue의 반복문 
                  :key="todo.id": Vue가 각 리스트 항목을 효율적으로 관리 할 수 있도록 고유한 키 부여 --> 
             
-            <li v-for="todo in notTodos" :key="todo.id">
+            <li v-for="todo in filteredNotTodos" :key="todo.id">
                 <input type="checkbox" :checked="todo.completed" @change="toggleComplete(todo)"/>
                 
                 <!-- 안 할 일 항목 수정 -->
@@ -56,12 +63,13 @@
     // ref: 일반 변수를 반응형(Reactive)으로 만듬
     // onMounted: 컴포넌트가 화면에 처음 나타났을때 특정 코드를 실행하도록 하는 함수
     // axios: 백엔드와 HTTP통신을 하기위한 라이브러리
-    import { ref, onMounted, nextTick } from 'vue';
+    import { ref, onMounted, nextTick, computed } from 'vue';
     import axios from 'axios'
 
     const notTodos = ref([]);               // notTodos 라는 반응형 변수 생성
     const newNotTodoTitle = ref('');        // 새로운 안 할 일 제목을 저장할 반응형 변수
     const editingNotTodoId = ref(null);     // 현재 수정 중인 안 할 일의 ID를 저장한 변수
+    const filter =ref('all');               // 필터 상태를 저장할 변수
 
     // 데이터를 불러오는 함수를 별로로 분리
     const fetchTodos = async () => {
@@ -162,6 +170,18 @@
         }
     };
 
+    // 안 할 일 목록 필터링 추가
+    // computed: filter나 notTodos 데이터 변경 시 자동으로 계산
+    const filteredNotTodos = computed(() => {
+        if (filter.value === 'completed') {
+            return notTodos.value.filter(todo => todo.completed);
+        } else if (filter.value === 'active') {
+            return notTodos.value.filter(todo => !todo.completed);
+        } else {
+            return notTodos.value;      //all인 경우
+        }
+    });
+
     // async: 비동기 동작
     onMounted(async () => {
         fetchTodos();
@@ -261,6 +281,28 @@
         color: #666;
         font-size: 14px;
         margin-bottom: 10px;
+    }
+
+    /* 필터 버튼 컨테이너 */
+    .filters {
+        display: flex;
+        gap: 10px;
+        justify-content: left;
+        margin-bottom: 20px;        
+    }
+
+    /* 필터 버튼 스타일 */
+    .filters button {
+        padding: 8px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filters button:hover {
+        background-color: #f0f0f0;
     }
 
 
