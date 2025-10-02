@@ -28,30 +28,40 @@
         </div>
         <ul v-else>
             <!-- v-for: Vue의 반복문 
-                 :key="todo.id": Vue가 각 리스트 항목을 효율적으로 관리 할 수 있도록 고유한 키 부여 --> 
+                 :key="notTodo.id": Vue가 각 리스트 항목을 효율적으로 관리 할 수 있도록 고유한 키 부여 --> 
             
-            <li v-for="todo in filteredNotTodos" :key="todo.id">
-                <input type="checkbox" :checked="todo.completed" @change="toggleComplete(todo)"/>
+            <li v-for="notTodo in filteredNotTodos" :key="notTodo.id">
+                <input type="checkbox" :checked="notTodo.completed" @change="toggleComplete(notTodo)"/>
                 
                 <!-- 안 할 일 항목 수정 -->
                 <!-- blur: 입력창에서 포커스가 벗어나면 함수 호출 -->
                  <input
-                    v-if="editingNotTodoId === todo.id"
+                    v-if="editingNotTodoId === notTodo.id"
                     type="text"
-                    v-model="todo.title"
-                    @keyup.enter="updateNotTodo(todo)"
-                    @blur="updateNotTodo(todo)" 
+                    v-model="notTodo.title"
+                    @keyup.enter="updateNotTodo(notTodo)"
+                    @blur="updateNotTodo(notTodo)" 
                  />
-
                  <!-- v-bind:class: 조건에 따른 클래스 적용 여부 결정 -->
                 <span 
                     v-else
-                    @dblclick="editNotTodo(todo)"
-                    :class="{ 'completed' : todo.completed }"
+                    @dblclick="editNotTodo(notTodo)"
+                    :class="{ 'completed' : notTodo.completed }"
+                    class="NotTodo-title-with-progress"
+                    :style="{backgroundColor: getCompletionColor(notTodo)}"
                     >     
-                    {{ todo.title }}        <!-- {{ }}: 데이터 바인딩 문법 -->
+                    {{ notTodo.title }}        <!-- {{ }}: 데이터 바인딩 문법 -->
                 </span>
-                <button @click="deleteNotTodo(todo.id)">삭제</button>
+
+                <div class="completion-controls">
+                    <button @click="toggleTodayCompletion(notTodo)" class="today-complete-button">
+                        {{ isTodayCompleted(notTodo) ? '오늘 달성 취소' : '오늘 달성' }}
+                    </button>
+                    <button @click="openCalendar(notTodo.id)" class="calendar-button">📅</button>
+                </div>
+
+                <button @click="deleteNotTodo(notTodo.id)">삭제</button>
+
             </li>
         </ul>
     </div>
@@ -62,9 +72,9 @@
 <script setup>
     // ref: 일반 변수를 반응형(Reactive)으로 만듬
     // onMounted: 컴포넌트가 화면에 처음 나타났을때 특정 코드를 실행하도록 하는 함수
-    // axios: 백엔드와 HTTP통신을 하기위한 라이브러리
     import { ref, onMounted, nextTick, computed } from 'vue';
-    import axios from 'axios'
+    import axios from 'axios'       // axios: 백엔드와 HTTP통신을 하기위한 라이브러리
+    import { format, differenceInDays, addDays, parseISO} from 'date-fns';
 
     const notTodos = ref([]);               // notTodos 라는 반응형 변수 생성
     const newNotTodoTitle = ref('');        // 새로운 안 할 일 제목을 저장할 반응형 변수
@@ -72,7 +82,7 @@
     const filter =ref('all');               // 필터 상태를 저장할 변수
 
     // 데이터를 불러오는 함수를 별로로 분리
-    const fetchTodos = async () => {
+    const fetchNotTodos = async () => {
         try {
             // 1. GET 요청으로 백엔드에서 데이터 가져오기
             // await: 백엔드에서 응답이 올 때가지 기다렸다가 다음코드 실행
@@ -109,24 +119,24 @@
             });
             
             // 4.새로운 목록을 다시 불러와 화면 업데이트
-            await fetchTodos();
+            await fetchNotTodos();
         } catch (error) {
             console.error("Error fetching notTodos: ", error);
         }
     }
 
     // 안 할 일 완료 기능 함수
-    const toggleComplete = async (todo) => {
+    const toggleComplete = async (notTodo) => {
         try {
             // 1. 백엔드에 PUT 요청 보내기(completed 상태 토글)
-            await axios.put(`http://localhost:8080/nottodo/${todo.id}`, {
-                // ...todo spread 문법: 기존 todo 객체의 모든 속송을 그대로 유지하고, 
-                // compelted 속성만 !todo.completed로 바꿔서 백엔드에 보냄
-                ...todo,
-                completed: !todo.completed
+            await axios.put(`http://localhost:8080/nottodo/${notTodo.id}`, {
+                // ...NotTodo spread 문법: 기존 todo 객체의 모든 속송을 그대로 유지하고, 
+                // compelted 속성만 !NotTodo.completed로 바꿔서 백엔드에 보냄
+                ...notTodo,
+                completed: !notTodo.completed
             });
             // 2. 전체 목록을 다시 불러와 화면 업데이트
-            await fetchTodos();
+            await fetchNotTodos();
         } catch (error) {
             console.error("Error updating todo:", error);
         }
@@ -138,15 +148,15 @@
             // 1. qordpsemdp DELETE 요청 보내기
             await axios.delete(`http://localhost:8080/nottodo/${id}`);
             // 2. 전체 목록을 다시 불러와 화면 업데이트
-            await fetchTodos();
+            await fetchNotTodos();
         } catch (error) {
             console.error("Error deleting todo:", error);
         }
     };
 
     // 안 할 일 항목 수정
-    const editNotTodo = (todo) => {
-        editingNotTodoId.value = todo.id;
+    const editNotTodo = (notTodo) => {
+        editingNotTodoId.value = notTodo.id;
         
         //DOM이 업데이트 된 후, 입력창에 자동으로 커서 위치
         nextTick(() => {
@@ -155,18 +165,18 @@
     };
 
     // 안 할 일 수정을 완료하고 백엔드에 업데이트하는 함수
-    const updateNotTodo = async (todo) => {
+    const updateNotTodo = async (notTodo) => {
         try {
             // 1. PUT 요청으로 백엔드에 수정된 데이터 전송
-            await axios.put(`http://localhost:8080/nottodo/${todo.id}`, todo);
+            await axios.put(`http://localhost:8080/nottodo/${notTodo.id}`, notTodo);
             
             // 2. 수정 모드 종료
             editingNotTodoId.value = null;
             
             // 3. 업데이트된 목록을 다시 불러와 화면 업데이트
-            await fetchTodos();
+            await fetchNotTodos();
         } catch (error) {
-            console.error("Error updating todo:", error);
+            console.error("Error updating NotTodo:", error);
         }
     };
 
@@ -174,17 +184,87 @@
     // computed: filter나 notTodos 데이터 변경 시 자동으로 계산
     const filteredNotTodos = computed(() => {
         if (filter.value === 'completed') {
-            return notTodos.value.filter(todo => todo.completed);
+            return notTodos.value.filter(notTodo => notTodo.completed);
         } else if (filter.value === 'active') {
-            return notTodos.value.filter(todo => !todo.completed);
+            return notTodos.value.filter(notTodo => !notTodo.completed);
         } else {
             return notTodos.value;      //all인 경우
         }
     });
 
+    // 오늘 날짜를 가져오는 함수
+    const getTodayDateString = () => format(new Date(), 'yyyy-MM-dd');
+
+    // 날짜 범위 생성 함수(등록일부터 오늘까지)
+    const getAllDatesFromRegistration = (startDateString) => {
+        const dates = [];
+        let currentDate = parseISO(startDateString);       //날짜문자열 Date 객체로 파싱
+        const today = new Date();       // 오늘 날짜를 Date 객체로 가져옴
+
+        while (currentDate <= today) {
+            dates.push(format(currentDate, 'yyyy-MM-dd'));
+            currentDate = addDays(currentDate, 1);  // addDays: 특정날짜에 지정된 일 수 더해줌
+        }
+        return dates;
+    };
+
+    // 각 NotTodo 달성률을 계산하고 색상을 반환하는 함수 
+    const getCompletionColor = (notTodo) => {
+        const allPossibleDates = getAllDatesFromRegistration(notTodo.createdAt);
+        const totalDays = allPossibleDates.length;
+
+        if (totalDays === 0) return '#ffffff' // 등록일이 오늘인 경우(qnsah 0 방지)
+
+        const compeltedCount = (notTodo.completonDates || []).length;
+        const completionRate = compeltedCount / totalDays;      // 달성률 계산
+
+        // 달성률에 따른 색상 변환 (연한 초록 -> 진한 초록)
+        if (completionRate === 0) return '#f0f0f0';
+        if (completionRate < 0.25) return '#d4edda';
+        if (completionRate < 0.5) return '#a2e0ae';
+        if (completionRate < 0.75) return '#70d283';
+        return '#28a745'
+    };
+
+    // 오늘 날짜 달성 여부 확인 (체크박스용)
+    const isTodayCompleted = (notTodo) => {
+        if(!notTodo.completionDates) return false;
+        return notTodo.completionDates.includes(getTodayDateString());
+    };
+
+    // 오늘 날짜 달성 토글 (백엔드 통신)
+    const toggleTodayCompletion = async (notTodo) => {
+        const today = getTodayDateString();
+        const currentCompletionDates = new Set(notTodo.completionDates || []);
+
+        if (currentCompletionDates.has(today)) {
+            currentCompletionDates.delete(today);
+        } else {
+            currentCompletionDates.add(today);
+        }
+
+        try {
+            const updateNotTodo = {
+                ...notTodo,
+                completionDates: Array.from(currentCompletionDates) //Set을 다시 배열로 변환
+            };
+            await axios.put(`http://localhost:8080/nottodo/${notTodo.id}`, updateNotTodo);
+            await fetchNotTodos();
+        } catch (error) {
+            console.error("Error updating completion dates:", error);
+        }
+    };
+
+    //캘린더 팝업 열기 함수(아직 미구현)\
+    const openCalendar = (id) => {
+        console.log(`open calendar for NotTodo ID: ${id}`);
+    };
+
+
+
     // async: 비동기 동작
     onMounted(async () => {
-        fetchTodos();
+        fetchNotTodos();
     });
 
 </script>
@@ -305,5 +385,35 @@
         background-color: #f0f0f0;
     }
 
+    /* 달성률  */
+    .NotTodo-title-with-progress {
+        flex-grow: 1;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-right: 10px;
+        transition: background-color 0.3s ease;
+        display: flex;
+        align-items: center;
+    }
+
+    .completion-controls {
+        display: flex;
+        gap: 5px;
+        margin-left: auto;   /* 버튼을 오른쪽으로 밀어냅니다 */
+    }
+
+    .today-complete-button, .calendar-button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f8f8f8;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .today-complete-button:hover, .calendar-button:hover {
+        background-color: #e0e0e0;
+    }
+   
 
 </style>
