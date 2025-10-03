@@ -35,17 +35,20 @@
                 
                 <!-- 안 할 일 항목 수정 -->
                 <!-- blur: 입력창에서 포커스가 벗어나면 함수 호출 -->
+                 <!--  -->
                  <input
                     v-if="editingNotTodoId === notTodo.id"
                     type="text"
                     v-model="notTodo.title"
                     @keyup.enter="updateNotTodo(notTodo)"
-                    @blur="updateNotTodo(notTodo)" 
+                    @focus="isFocusing = true"
+                    @blur="isFocusing ? updateNotTodo(notTodo) : null"
+                    ref="editingInput" 
                  />
                  <!-- v-bind:class: 조건에 따른 클래스 적용 여부 결정 -->
                 <span 
                     v-else
-                    @dblclick="editNotTodo(notTodo)"
+                    @dblclick.prevent.stop="editNotTodo(notTodo)"
                     :class="{ 'completed' : notTodo.completed }"
                     class="NotTodo-title-with-progress"
                     :style="{backgroundColor: getCompletionColor(notTodo)}"
@@ -80,6 +83,8 @@
     const newNotTodoTitle = ref('');        // 새로운 안 할 일 제목을 저장할 반응형 변수
     const editingNotTodoId = ref(null);     // 현재 수정 중인 안 할 일의 ID를 저장한 변수
     const filter =ref('all');               // 필터 상태를 저장할 변수
+    const editingInput = ref(null);         // 목록 내용 편집
+    const isFocusing = ref(false);          // 현재 포커스 중인지 확인
 
     // 데이터를 불러오는 함수를 별로로 분리
     const fetchNotTodos = async () => {
@@ -154,30 +159,63 @@
         }
     };
 
-    // 안 할 일 항목 수정
+    // 안 할 일 항목 수정 (자동 select 되면서 입력안되는거 수정)
     const editNotTodo = (notTodo) => {
+
+        isFocusing.value = false;
+        console.log(`[1] editTodo 진입: ID ${notTodo.id}`);
+        // 1. 수정 모드 진입
         editingNotTodoId.value = notTodo.id;
-        
-        //DOM이 업데이트 된 후, 입력창에 자동으로 커서 위치
+
         nextTick(() => {
-            document.querySelector(`input[type="text"]`).focus();
+            
+            let inputElement;
+            
+            // 2. ref를 통해 DOM 요소 접근
+            if (Array.isArray(editingInput.value)) {
+                inputElement = editingInput.value[editingInput.value.length - 1];
+            } else {
+                inputElement = editingInput.value;
+            }
+
+            // 3. 포커스 설정
+            if(inputElement) {
+                inputElement.focus();
+                //inputElement.select();
+
+                //4. 텍스트 선택 방지 및 커서 위치 고정
+                const len = inputElement.value.length;
+                inputElement.setSelectionRange(len, len);
+
+                //5. isFocusing 상태를 켜서 @blur 활성화
+                isFocusing.value = true;
+            } 
         });
     };
 
     // 안 할 일 수정을 완료하고 백엔드에 업데이트하는 함수
     const updateNotTodo = async (notTodo) => {
+
+        // isFocusing이 false면 즉시 함수를 종료하여 @blur 무시      
+        if (!isFocusing.value) {
+            return;
+        }
+        isFocusing.value = false;
+
         try {
             // 1. PUT 요청으로 백엔드에 수정된 데이터 전송
             await axios.put(`http://localhost:8080/nottodo/${notTodo.id}`, notTodo);
             
             // 2. 수정 모드 종료
             editingNotTodoId.value = null;
-            
+
             // 3. 업데이트된 목록을 다시 불러와 화면 업데이트
             await fetchNotTodos();
         } catch (error) {
             console.error("Error updating NotTodo:", error);
         }
+
+        
     };
 
     // 안 할 일 목록 필터링 추가
